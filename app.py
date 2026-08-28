@@ -1,57 +1,44 @@
 import cv2
-import time
-try:
-    from mediapipe.python import solutions as mp_solutions
-except (ImportError, AttributeError):
-    import mediapipe as mp
-
-    if not hasattr(mp, "solutions"):
-        raise RuntimeError(
-            "This app requires MediaPipe's legacy solutions API. "
-            "Use mediapipe==0.10.21."
-        ) from None
-    mp_solutions = mp.solutions
-
-cap = cv2.VideoCapture(0)
-
-mphands = mp_solutions.hands
-hands = mphands.Hands(static_image_mode=False)
-
-pTime=0
-cTime=0
+import mediapipe as mp
+import numpy as np
+import streamlit as st
 
 
-while True:
-    success, img = cap.read()
+st.set_page_config(page_title="Hand Tracking", page_icon="🖐️")
+st.title("Hand Tracking")
+st.write("Take a photo with your camera to detect hand landmarks.")
 
-    imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = hands.process(imgRGB)
 
-    if results.multi_hand_landmarks:
-        for handLms in results.multi_hand_landmarks:
-            # below code is for drawing the landmarks on the hand
-            for id, lm in enumerate(handLms.landmark):
-                h,w,c = img.shape
-                cx,cy = int(lm.x*w), int(lm.y*h)
-                print(id, cx, cy)
-                if id == 0:
-                    cv2.circle(img, (cx,cy), 10, (255,0,255), cv2.FILLED)
+@st.cache_resource
+def load_hand_tracker():
+    return mp.solutions.hands.Hands(
+        static_image_mode=True,
+        max_num_hands=2,
+        min_detection_confidence=0.5,
+    )
 
-            mp_solutions.drawing_utils.draw_landmarks(
-                img, handLms, mphands.HAND_CONNECTIONS
-            )
-        
-    
-    cTime = time.time()
-    fps = 1/(cTime-pTime)
-    pTime = cTime
 
-    cv2.putText(img,str(int(fps)),(10,70),cv2.FONT_HERSHEY_PLAIN,3,(255,0,255),3)
+camera_image = st.camera_input("Take a picture")
 
-    cv2.imshow("Image", img)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-    
-# Release the webcam and close the window
-cap.release()
-cv2.destroyAllWindows()
+if camera_image is not None:
+    image_bytes = np.frombuffer(camera_image.getvalue(), dtype=np.uint8)
+    image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
+
+    if image is None:
+        st.error("The camera image could not be read.")
+    else:
+        tracker = load_hand_tracker()
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = tracker.process(rgb_image)
+
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                mp.solutions.drawing_utils.draw_landmarks(
+                    image,
+                    hand_landmarks,
+                    mp.solutions.hands.HAND_CONNECTIONS,
+                )
+        else:
+            st.info("No hands were detected. Try another photo.")
+
+        st.image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), caption="Result")
