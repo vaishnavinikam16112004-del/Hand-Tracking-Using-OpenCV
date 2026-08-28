@@ -1,12 +1,11 @@
 import cv2
-import mediapipe as mp
 import time
+import mediapipe as mp
 
 cap = cv2.VideoCapture(0)
 
 mphands = mp.solutions.hands
-hands = mphands.Hands(False)
-mpDraw = mp.solutions.drawing_utils
+hands = mphands.Hands(static_image_mode=False)
 
 pTime=0
 cTime=0
@@ -28,7 +27,9 @@ while True:
                 if id == 0:
                     cv2.circle(img, (cx,cy), 10, (255,0,255), cv2.FILLED)
 
-            mpDraw.draw_landmarks(img, handLms, mphands.HAND_CONNECTIONS)
+            mp.solutions.drawing_utils.draw_landmarks(
+                img, handLms, mphands.HAND_CONNECTIONS
+            )
         
     
     cTime = time.time()
