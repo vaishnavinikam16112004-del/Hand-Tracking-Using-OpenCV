@@ -1,10 +1,20 @@
 import cv2
 import time
-import mediapipe as mp
+try:
+    from mediapipe.python import solutions as mp_solutions
+except (ImportError, AttributeError):
+    import mediapipe as mp
+
+    if not hasattr(mp, "solutions"):
+        raise RuntimeError(
+            "This app requires MediaPipe's legacy solutions API. "
+            "Use mediapipe==0.10.21."
+        ) from None
+    mp_solutions = mp.solutions
 
 cap = cv2.VideoCapture(0)
 
-mphands = mp.solutions.hands
+mphands = mp_solutions.hands
 hands = mphands.Hands(static_image_mode=False)
 
 pTime=0
@@ -27,7 +37,7 @@ while True:
                 if id == 0:
                     cv2.circle(img, (cx,cy), 10, (255,0,255), cv2.FILLED)
 
-            mp.solutions.drawing_utils.draw_landmarks(
+            mp_solutions.drawing_utils.draw_landmarks(
                 img, handLms, mphands.HAND_CONNECTIONS
             )
         
